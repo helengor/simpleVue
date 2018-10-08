@@ -1,0 +1,116 @@
+
+var store = new Vuex.Store({
+    state: {
+      items: content_data.content,
+      filters: content_data.filter,
+      show_filter_count: 7
+    },
+    mutations: { 
+        clear_all_filters: function(state){
+            state.filters.forEach(function (filter) {               
+                filter.data.forEach(function (filter_item) {
+                    filter_item.active = 0;
+                });
+            });
+        },
+        set_filter_hidden: function(state){
+            state.filters.forEach(function (filter) {
+                Vue.set(filter, 'show_filter', 1);
+                filter.data.forEach(function (filter_item, filter_item_index) {
+                    Vue.set(filter_item, 'show_filter', 1);
+                    if(filter_item_index > state.show_filter_count){Vue.set(filter_item, 'show_filter', 0);}
+                });
+            });
+        },
+        toggle_filter_hidden: function(state,index){
+            state.filters[index].data.forEach(function (filter_item, filter_item_index) {
+                if(filter_item_index > state.show_filter_count){
+                    filter_item.show_filter = (filter_item.show_filter == 0) ? 1 : 0;
+                }
+            });
+        },
+        toggle_filter: function(state,index){
+            state.filters[index].show_filter = state.filters[index].show_filter ? 0 : 1
+        },
+        clear_filter: function(state, indexes){
+            state.filters[indexes.filter_index].data[indexes.filter_data_index].active = 0;
+        },
+        add_filter: function(state, indexes){
+            state.filters[indexes.filter_index].data[indexes.filter_data_index].active = 1;
+        }
+    },
+    actions: {
+        toggle_filter_hidden: function(context,index){
+            context.commit('toggle_filter_hidden',index);
+        }
+    }
+});
+
+
+Vue.component('content-item', {
+    template: '#content-item-template',
+    props: ['item']
+});
+
+Vue.component('list-filter', {
+    template: '#filter-item-template',
+    props: ['filter','filter_index','filter_data_index'],
+    methods: {
+        clear_filter_item: function () {
+            store.commit('clear_filter', {filter_index: this.filter_index, filter_data_index: this.filter_data_index});
+        },
+        add_filter_item: function(){
+            store.commit('add_filter', {filter_index: this.filter_index, filter_data_index: this.filter_data_index});
+        }
+    }
+});
+
+var VUE_APP = new Vue({
+    el: '#vue_app',
+    data: function(){
+            return{
+                show_filter_count: store.state.show_filter_count,
+                show_filter_text: {0: 'Показать все', 1: 'Скрыть'}
+            };
+        },
+    computed:{
+        active_filters: function(){
+            var active_filters = {data: [], count: 0};
+            var filters = store.state.filters;
+            filters.forEach(function (filter, parent_index) {               
+                filter.data.forEach(function (filter_item, data_index) {
+                    if(filter_item.active == 1){
+                        
+                        var active_filter_item = filter_item;
+                        active_filter_item.parent_index = parent_index;
+                        active_filter_item.data_index = data_index;
+                        
+                        active_filters.data.push(active_filter_item);
+                        active_filters.count += filter_item.count;
+                    }
+                });
+            });
+            return active_filters;
+        },
+        filters: function(){            
+            return store.state.filters;
+        },
+        items: function(){
+            return store.state.items;
+        }
+    },
+    methods: {
+        clear_filters: function(){
+            store.commit('clear_all_filters');
+        },
+        toggle_filter: function(index){
+            store.commit('toggle_filter',index);
+        },
+        toggle_filters: function(index){
+            store.dispatch('toggle_filter_hidden',index);
+        }
+    },
+    created: function(){
+        store.commit('set_filter_hidden'); 
+    }
+});
